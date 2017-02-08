@@ -15,8 +15,8 @@ if [ $? -ne 0 ]; then
     echo "Backup: echec du backup de la Conf"
     exit 2
 else
-    find /usr/local/web/gitlab/backup/conf/*.tgz -mtime +7 -exec /bin/rm -f {} \;
-    find /usr/local/web/gitlab/backup/db/*.tar -mtime +7 -exec /bin/rm -f {} \;
+    find /usr/local/web/gitlab/backup/conf/*.tgz -mtime +7 -exec /bin/rm -vf {} \;
+    find /usr/local/web/gitlab/backup/db/*.tar -mtime +7 -exec /bin/rm -vf {} \;
     echo "=== Backup de Gitlab du $(date "+%d-%m-%Y") OK ==="
 fi
 
