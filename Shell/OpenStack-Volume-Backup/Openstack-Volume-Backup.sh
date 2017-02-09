@@ -60,7 +60,7 @@ do
 	    exit 2
 	else
 		echo "Backup en cours de création : heure de démarrage $(date +"%T")"
-
+        fi
 	#Suppression du volume et du snapshot crée pour le backup
 	STATE=$(openstack volume backup list | grep Backup-VolumeData-$SERVER-$DATE | sed 's/.\{71\}//;s/.\{9\}$//')
 	while [ "$STATE" != "available"] 
@@ -76,9 +76,9 @@ do
 	#Gestion de la retention
 	echo "Supression des anciennes sauvegardes"
 	case $BACKUP in
-		"monthly" ) SUPP=$(find /retention -name "BackupMonthly-*" -mtime +120 | sed 's/..//')
-		"weekly" ) SUPP=$(find /retention -name "BackupWeekly-*" -mtime +30 | sed 's/..//')
-		"daily" ) SUPP=$(find /retention -name "BackupDaily-*" -mtime +4  | sed 's/..//')
+		"monthly" ) SUPP=$(find /retention -name "BackupMonthly-*" -mtime +120 | sed 's/..//');;
+		"weekly" ) SUPP=$(find /retention -name "BackupWeekly-*" -mtime +30 | sed 's/..//');;
+		"daily" ) SUPP=$(find /retention -name "BackupDaily-*" -mtime +4  | sed 's/..//');;
 	esac
 
 	for i in $(echo $SUPP)
