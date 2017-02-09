@@ -9,7 +9,7 @@ echo "Lancement le $(date)"
 
 
 
-for $SERVER in 'Gitlab' 'Minio' 'Jira' 'VPN'
+for SERVER in 'Gitlab' 'Minio' 'Jira' 'VPN'
 do
 	#Etape 1 : Création du snapshot de l'instance
 	echo "Etape 1/3 : Creation du snapshot du volume data de $SERVER"
