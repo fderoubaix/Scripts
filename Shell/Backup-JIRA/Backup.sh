@@ -12,6 +12,6 @@ if [ $? -ne 0 ]; then
 else
     echo === Supp des backup de plus de 7 jours ===
     find /usr/local/web/atlassian/jira/backup/*.gz -mtime +7 -exec /bin/rm -vf {} \;
-    echo "=== Backup de Gitlab du $(date "+%d-%m-%Y") OK ==="
+    echo "=== Backup de JIRA du $(date "+%d-%m-%Y") OK ==="
 fi
 
