@@ -1,98 +1,43 @@
-#!/bin/bash
-source orange-cred.sh
-DATE=$(date "+%Y-%m-%d")
-MONTH=`date +"%d"`
-WEEK=`date +"%u"`
+#!/usr/bin/env bash
 
-echo "Backup des volumes DATA des instances Orange Cloudwatt"
-echo "Lancement le $(date)"
+# To use an OpenStack cloud you need to authenticate against the Identity
+# service named keystone, which returns a **Token** and **Service Catalog**.
+# The catalog contains the endpoints for all services the user/tenant has
+# access to - such as Compute, Image Service, Identity, Object Storage, Block
+# Storage, and Networking (code-named nova, glance, keystone, swift,
+# cinder, and neutron).
+#
+# *NOTE*: Using the 2.0 *Identity API* does not necessarily mean any other
+# OpenStack API is version 2.0. For example, your cloud provider may implement
+# Image API v1.1, Block Storage API v2, and Compute API v2.0. OS_AUTH_URL is
+# only for the Identity API served through keystone.
+export OS_AUTH_URL=https://identity.fr1.cloudwatt.com/v2.0
 
+# With the addition of Keystone we have standardized on the term **tenant**
+# as the entity that owns the resources.
+export OS_TENANT_ID=fa1504554e1546e583a7ab49f4af2992
+export OS_TENANT_NAME="0750186005_orange"
 
+# unsetting v3 items in case set
+unset OS_PROJECT_ID
+unset OS_PROJECT_NAME
+unset OS_USER_DOMAIN_NAME
 
-for SERVER in 'Gitlab' 'Minio' 'Jira' 'VPN'
-do
-	#Etape 1 : Création du snapshot de l'instance
-	echo "Etape 1/3 : Creation du snapshot du volume data de $SERVER"
-	cinder snapshot-create $SERVER --force True --name Snap-$SERVER-$DATE
+# In addition to the owning entity (tenant), OpenStack stores the entity
+# performing the action as the **user**.
+export OS_USERNAME="frederic.deroubaix@ekino.com"
 
-	if [ $? -ne 0 ]; then
-	    echo "Echec lors de l'étape 1/3 : création du snapshot de $SERVER"
-	    exit 2
-	else
-		echo "Creation du snapshot OK"
-	fi
+# With Keystone you pass the keystone password.
+echo "oaGbMO3l9sGJcc7rUSvI"
+read -sr OS_PASSWORD_INPUT
+export OS_PASSWORD=$OS_PASSWORD_INPUT
 
-	#Etape 2 : Création d'un volume basé sur le snapshot de l'instance
-	echo "Etape 2/3 : Creation du volume pour le backup de $SERVER"
-	ID=$(openstack volume snapshot list | grep Snap-$SERVER-$DATE | sed 's/..//;s/.\{72\}$//')
-	cinder create --snapshot-id $ID --display-name VolumeBak-$SERVER-$DATE
+# If your configuration has multiple regions, we set that information here.
+# OS_REGION_NAME is optional and only valid in certain environments.
+export OS_REGION_NAME="fr1"
+# Don't leave a blank variable, unset it if it was empty
+if [ -z "$OS_REGION_NAME" ]; then unset OS_REGION_NAME; fi
 
-	if [ $? -ne 0 ]; then
-	    echo "Echec lors de l'étape 2/3 : création du volume de $SERVER"
-	    exit 2
-	else
-		echo "Creation du volume OK"
-	fi
-
-	#Etape 3 : Backup du volume crée
-	echo "Etape 3/3 : Creation du backup de $SERVER"
-
-	if [ ! -d  "/retention" ]; then
-			mkdir /retention
-	fi
-
-	if [ "$MONTH" -eq 1 ]; then
-		BACKUP=month
-		touch  /retention/BackupMonthly-VolumeData-$SERVER-$DATE
-  		cinder backup-create VolumeBak-$SERVER-$DATE --name BackupMonthly-VolumeData-$SERVER-$DATE
-	elif [ "$WEEK" -eq 6 ]; then
-		BACKUP=week
-		touch  /retention/BackupWeekly-VolumeData-$SERVER-$DATE
-    	cinder backup-create VolumeBak-$SERVER-$DATE --name BackupWeekly-VolumeData-$SERVER-$DATE
-  	else
-  		BACKUP=daily
-  		touch  /retention/BackupDaily-VolumeData-$SERVER-$DATE
-  		cinder backup-create VolumeBak-$SERVER-$DATE --name BackupDaily-VolumeData-$SERVER-$DATE
-  	fi
-
-	if [ $? -ne 0 ]; then
-	    echo "Echec lors de l'étape 3/3 : création du volume de $SERVER"
-	    exit 2
-	else
-		echo "Backup en cours de création : heure de démarrage $(date +"%T")"
-        fi
-	#Suppression du volume et du snapshot crée pour le backup
-	STATE=$(openstack volume backup list | grep Backup-VolumeData-$SERVER-$DATE | sed 's/.\{71\}//;s/.\{9\}$//')
-	while [ "$STATE" != "available"] 
-	do
-		sleep 300
-		STATE=$(openstack volume backup list | grep Backup-VolumeData-$SERVER-$DATE | sed 's/.\{71\}//;s/.\{9\}$//')
-	done
-
-	echo "Backup terminé. Heure de fin $(date +"%T")"
-	cinder snapshot-delete $ID
-	cinder delete VolumeBak-$SERVER-$DATE
-
-	#Gestion de la retention
-	echo "Supression des anciennes sauvegardes"
-	case $BACKUP in
-		"monthly" ) SUPP=$(find /retention -name "BackupMonthly-*" -mtime +120 | sed 's/..//');;
-		"weekly" ) SUPP=$(find /retention -name "BackupWeekly-*" -mtime +30 | sed 's/..//');;
-		"daily" ) SUPP=$(find /retention -name "BackupDaily-*" -mtime +4  | sed 's/..//');;
-	esac
-
-	for i in $(echo $SUPP)
-	do
-	    cinder backup-delete $i
-	    if [ $? -ne 0 ]; then
-	    echo "Echec lors de la suppression du backup de $i"
-	    exit 2
-		else
-			echo "Supression du backup de $i OK"
-			find /retention -name $i -exec /bin/rm -vf {} \;
-		fi
-	done
-done
-
-echo "Sauvegardes des volumes des instances OK"
-echo "Terminé le $(date)"
+export OS_ENDPOINT_TYPE=publicURL
+export OS_INTERFACE=public
+export OS_IDENTITY_API_VERSION=2
