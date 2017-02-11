@@ -4,8 +4,8 @@ DATE=$(date "+%d-%m-%Y")
 MONTHLY=`date +"%d"`
 WEEKLY=`date +"%u"`
 
-if [ "$WEEKLY" -eq 6 ] || [ "$WEEKLY" -eq 7 ]; then
-	echo "Weekend : Pas de backup le $DATE  "
+if [ "$WEEKLY" -eq 7 ] &&  [ "$MONTHLY" -ne 1 ]; then
+	echo "Dimanche : Pas de backup le $DATE  "
 	exit 0
 else
 	echo "Backup des volumes DATA des instances Orange Cloudwatt"
