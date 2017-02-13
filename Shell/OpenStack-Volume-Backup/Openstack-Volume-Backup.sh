@@ -17,7 +17,7 @@ else
 	do
 		#Etape 1 : Création du snapshot de l'instance
 		echo "Etape 1/3 : Creation du snapshot du volume data de $SERVER"
-		VOLNAME=$(cinder list | grep "$SERVER" | cut -d "|" -f 4 | cut -c 2-)
+		VOLNAME=$(cinder list | grep "$SERVER" | cut -d "|" -f 4 | cut -c 2- | tr -d ' ')
 		cinder snapshot-create "$VOLNAME" --force True --name Snap-"$SERVER"-"$DATE"
 
 		if [ $? -ne 0 ]; then
@@ -29,7 +29,7 @@ else
 
 		#Etape 2 : Création d'un volume basé sur le snapshot de l'instance
 		echo "Etape 2/3 : Creation du volume pour le backup de $SERVER"
-		ID=$(openstack volume snapshot list | grep Snap-"$SERVER"-"$DATE" | cut -d "|" -f 2 | cut -c 2-)
+		ID=$(openstack volume snapshot list | grep Snap-"$SERVER"-"$DATE" | cut -d "|" -f 2 | cut -c 2- | tr -d ' ')
 		cinder create --snapshot-id $ID --display-name VolumeBak-"$SERVER"-"$DATE"
 
 		if [ $? -ne 0 ]; then
@@ -76,11 +76,11 @@ else
 		fi
 
 		# Etape 4 : Suppression du volume et du snapshot crée pour le backup
-		STATE=$(openstack volume backup list | grep Backup"$BACKUP"-VolumeData-"$SERVER"-"$DATE" | cut -d "|" -f 5 | cut -c 2-)
-		while [[ "$STATE" != "available" ]] 
+		STATE=$(openstack volume backup list | grep Backup"$BACKUP"-VolumeData-"$SERVER"-"$DATE" | cut -d "|" -f 5 | cut -c 2- | tr -d ' ')
+		while [[ "$STATE" -ne "available" ]] 
 		do
-			sleep 300
-			STATE=$(openstack volume backup list | grep Backup"$BACKUP"-VolumeData-"$SERVER"-"$DATE" | cut -d "|" -f 5 | cut -c 2-)
+			sleep 60
+			STATE=$(openstack volume backup list | grep Backup"$BACKUP"-VolumeData-"$SERVER"-"$DATE" | cut -d "|" -f 5 | cut -c 2- | tr -d ' ')
 		done
 
 		echo "Backup $SERVER terminé. Heure de fin $(date +"%T")"
