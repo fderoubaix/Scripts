@@ -5,13 +5,26 @@ MONTHLY=`date +"%d"`
 WEEKLY=`date +"%u"`
 
 if [ "$WEEKLY" -eq 7 ] && [ "$MONTHLY" -ne 1 ]; then
+	echo "=== === === === === === === === === === === === === === ==="
 	echo "Dimanche : Pas de backup le $DATE  "
+	echo "=== === === === === === === === === === === === === === ==="
 	exit 0
 else
-	echo "Backup des volumes DATA des instances Orange Cloudwatt"
-	echo "Lancement le $(date)"
-
 	source /home/frederic/Documents/orange-openrc.sh
+
+	if [ "$MONTHLY" -eq 1 ]; then
+		BACKUP=Monthly
+	elif [ "$WEEKLY" -eq 6 ]; then
+		BACKUP=Weekly
+	else
+	  	BACKUP=Daily
+	fi
+
+	echo "=== === === === === === === === === === === === === === ==="
+	echo "Backup des volumes DATA des instances Orange Cloudwatt"
+	echo "Date d'execution du backup: $(date)"
+	echo "Lancement du backup en mode: $BACKUP"
+	echo "=== === === === === === === === === === === === === === ==="
 
 	for SERVER in 'vpn' 'gitlab' 'jira' 'minio'
 	do
@@ -48,19 +61,13 @@ else
 				mkdir /retention
 		fi
 
-		if [ "$MONTHLY" -eq 1 ]; then
-			BACKUP=Monthly
-			echo "Backup: Mensuel"
+		if [ "$BACKUP" -eq Monthly ]; then
 			touch  /retention/BackupMonthly-VolumeData-"$SERVER"-"$DATE"
 	  		cinder backup-create VolumeBak-"$SERVER"-"$DATE" --name BackupMonthly-VolumeData-"$SERVER"-"$DATE"
-		elif [ "$WEEKLY" -eq 6 ]; then
-			BACKUP=Weekly
-			echo "Backup: Hebdo"
+		elif [ "$BACKUP" -eq Weekly ]; then
 			touch  /retention/BackupWeekly-VolumeData-"$SERVER"-"$DATE"
 	    	cinder backup-create VolumeBak-"$SERVER"-"$DATE" --name BackupWeekly-VolumeData-"$SERVER"-"$DATE"
 	  	else
-	  		BACKUP=Daily
-	  		echo "Backup: Journalier"
 	  		touch  /retention/BackupDaily-VolumeData-"$SERVER"-"$DATE"
 	  		cinder backup-create VolumeBak-"$SERVER"-"$DATE" --name BackupDaily-VolumeData-"$SERVER"-"$DATE"
 	  	fi
@@ -70,6 +77,7 @@ else
 		    echo "Revert : suppression du snapshot Snap-$SERVER-$DATE et du volume VolumeBak-$SERVER-$DATE"
 		    cinder snapshot-delete "$ID"
 		    cinder backup-delete VolumeBak-"$SERVER"-"$DATE"
+		    rm -vf /retention/BackupMonthly-VolumeData-"$SERVER"-"$DATE"
 		    exit 2
 		else
 			echo "Backup pour le serveur $SERVER en cours de création : heure de démarrage $(date +"%T") ..."
@@ -77,9 +85,9 @@ else
 
 		# Etape 4 : Suppression du volume et du snapshot crée pour le backup
 		STATE=$(openstack volume backup list | grep Backup"$BACKUP"-VolumeData-"$SERVER"-"$DATE" | cut -d "|" -f 5 | cut -c 2- | tr -d ' ')
-		while [[ "$STATE" -ne "available" ]] 
+		while [[ "$STATE" != available ]] 
 		do
-			sleep 60
+			sleep 30
 			STATE=$(openstack volume backup list | grep Backup"$BACKUP"-VolumeData-"$SERVER"-"$DATE" | cut -d "|" -f 5 | cut -c 2- | tr -d ' ')
 		done
 
@@ -104,14 +112,16 @@ else
 			    echo "Echec lors de la suppression du backup de $i"
 			    exit 2
 		    else
-				echo "Supression du backup de $i OK"
 				find /retention -name "$i" -exec /bin/rm -vf {} \;
+				echo "Supression du backup de $i : OK"
 		    fi
 		done
 	else
-		echo "Pas de suppression à effectuer"
+		echo "OK Pas de suppression à effectuer"
 	fi
+echo "=== === === === === === === === === === === === === === ==="
 echo "Script de backup terminé avec succès le $(date)"
+echo "=== === === === === === === === === === === === === === ==="
 exit 0
 fi
 
