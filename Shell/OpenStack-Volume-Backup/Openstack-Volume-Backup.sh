@@ -35,6 +35,7 @@ else
 
 		if [ $? -ne 0 ]; then
 		    echo "Echec lors de l'étape 1/3 : création du snapshot de $SERVER"
+		    echo "Echec lors de l'étape 1/3 : création du snapshot de $SERVER" > /var/log/backup_result
 		    exit 2
 		else
 			echo "Creation du snapshot OK"
@@ -47,6 +48,7 @@ else
 
 		if [ $? -ne 0 ]; then
 		    echo "Echec lors de l'étape 2/3 : création du volume de $SERVER"
+		    echo "Echec lors de l'étape 2/3 : création du volume de $SERVER" > /var/log/backup_result
 		    echo "Revert : suppression du snapshot Snap-$SERVER-$DATE"
 		    cinder snapshot-delete "$ID"
 		    exit 2
@@ -74,6 +76,7 @@ else
 
 		if [ $? -ne 0 ]; then
 		    echo "Echec lors de l'étape 3/3 : création du volume de $SERVER"
+		    echo "Echec lors de l'étape 3/3 : création du volume de $SERVER" > /var/log/backup_result
 		    echo "Revert : suppression du snapshot Snap-$SERVER-$DATE et du volume VolumeBak-$SERVER-$DATE"
 		    cinder snapshot-delete "$ID"
 		    cinder backup-delete VolumeBak-"$SERVER"-"$DATE"
@@ -110,7 +113,7 @@ else
 			cinder backup-delete "$i"
 			if [ $? -ne 0 ]; then
 			    echo "Echec lors de la suppression du backup de $i"
-			    exit 2
+			    echo "Backup OK mais echec lors de la suppression de l'ancien backup $i" > /var/log/backup_result
 		    else
 				find /retention -name "$i" -exec /bin/rm -vf {} \;
 				echo "Supression du backup de $i : OK"
@@ -121,6 +124,7 @@ else
 	fi
 echo "=== === === === === === === === === === === === === === ==="
 echo "Script de backup terminé avec succès le $(date)"
+echo "Etat du backup le $(date) : SUCCES" > /var/log/backup_result
 echo "=== === === === === === === === === === === === === === ==="
 exit 0
 fi
