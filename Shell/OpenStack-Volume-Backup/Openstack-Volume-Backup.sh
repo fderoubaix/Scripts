@@ -1,4 +1,18 @@
 #!/bin/bash
+# Février 2017, By Frédéric Deroubaix
+#Script de sauvegarde des volumes "data" des instances Openstack
+#Le SDK Python pour Openstack doit être installés !
+
+
+#Définir ici la politique de rétention souhaitée (en jours) pour la conservation des backup Daily, Weekly et Monthly.
+#La rétention débute à 48h (2 jours) avec la valeur "1" (exemple: pour 4 jours de rétentions, mettre la valeur "3" dans RDAILY)
+RDAILY=3
+RWEEKLY=2
+RMONTHLY=2
+##
+#Définir ici le fichier contenant les variables d'environnement pour la connexion sur l'environnement Openstack
+VARAUTH=/home/frederic/Documents/orange-openrc.sh
+##
 
 DATE=$(date "+%d-%m-%Y")
 MONTHLY=`date +"%d"`
@@ -6,11 +20,11 @@ WEEKLY=`date +"%u"`
 
 if [ "$WEEKLY" -eq 7 ] && [ "$MONTHLY" -ne 1 ]; then
 	echo "=== === === === === === === === === === === === === === ==="
-	echo "Dimanche : Pas de backup le $DATE  "
+	echo "*** Dimanche : Pas de backup le $DATE *** "
 	echo "=== === === === === === === === === === === === === === ==="
 	exit 0
 else
-	source /home/frederic/Documents/orange-openrc.sh
+	source "$VARAUTH"
 
 	if [ "$MONTHLY" -eq 1 ]; then
 		BACKUP=Monthly
@@ -21,15 +35,15 @@ else
 	fi
 
 	echo "=== === === === === === === === === === === === === === ==="
-	echo "Backup des volumes DATA des instances Orange Cloudwatt"
-	echo "Date d'execution du backup: $(date)"
-	echo "Lancement du backup en mode: $BACKUP"
+	echo "*** Backup des volumes DATA des instances Orange Cloudwatt ***"
+	echo "*** Date d'execution du backup: $(date) ***"
+	echo "*** Lancement du backup en mode: $BACKUP ***"
 	echo "=== === === === === === === === === === === === === === ==="
 
 	for SERVER in 'vpn' 'gitlab' 'jira' 'minio'
 	do
 		#Etape 1 : Création du snapshot de l'instance
-		echo "Etape 1/3 : Creation du snapshot du volume data de $SERVER"
+		echo "*** Etape 1/3 : Creation du snapshot du volume data de $SERVER ***"
 		VOLNAME=$(cinder list | grep "$SERVER" | cut -d "|" -f 4 | cut -c 2- | tr -d ' ')
 		cinder snapshot-create "$VOLNAME" --force True --name Snap-"$SERVER"-"$DATE"
 
@@ -42,7 +56,7 @@ else
 		fi
 
 		#Etape 2 : Création d'un volume basé sur le snapshot de l'instance
-		echo "Etape 2/3 : Creation du volume pour le backup de $SERVER"
+		echo "*** Etape 2/3 : Creation du volume pour le backup de $SERVER ***"
 		ID=$(openstack volume snapshot list | grep Snap-"$SERVER"-"$DATE" | cut -d "|" -f 2 | cut -c 2- | tr -d ' ')
 		cinder create --snapshot-id $ID --display-name VolumeBak-"$SERVER"-"$DATE"
 
@@ -57,7 +71,7 @@ else
 		fi
 
 		#Etape 3 : Backup du volume crée
-		echo "Etape 3/3 : Creation du backup de $SERVER"
+		echo "*** Etape 3/3 : Creation du backup de $SERVER ***"
 
 		if [ ! -d  "/retention" ]; then
 				mkdir /retention
@@ -100,11 +114,11 @@ else
 	done
 
 	#Gestion de la retention
-	echo "Recherche des anciennes sauvegardes $BACKUP à supprimer ..."
+	echo "*** Recherche des anciennes sauvegardes $BACKUP à supprimer ... ***"
 	case "$BACKUP" in
-		"Monthly" ) SUPP=$(find /retention/BackupMonthly* -mtime +120 | cut -d "/" -f 3);;
-		"Weekly" ) SUPP=$(find /retention/BackupWeekly* -mtime +30 | cut -d "/" -f 3);;
-		"Daily" ) SUPP=$(find /retention/BackupDaily* -mtime +4  | cut -d "/" -f 3);;
+		"Monthly" ) SUPP=$(find /retention/BackupMonthly* -mtime "$RMONTHLY" | cut -d "/" -f 3);;
+		"Weekly" ) SUPP=$(find /retention/BackupWeekly* -mtime "$RWEEKLY" | cut -d "/" -f 3);;
+		"Daily" ) SUPP=$(find /retention/BackupDaily* -mtime "$RDAILY" | cut -d "/" -f 3);;
 	esac
 	if [[ ! -z "$SUPP" ]]; then
 		for i in $(echo "$SUPP")
@@ -123,7 +137,7 @@ else
 		echo "OK Pas de suppression à effectuer"
 	fi
 echo "=== === === === === === === === === === === === === === ==="
-echo "Script de backup terminé avec succès le $(date)"
+echo "*** Script de backup terminé avec succès le $(date) ***"
 echo "Etat du backup le $(date) : SUCCES" > /var/log/backup_result
 echo "=== === === === === === === === === === === === === === ==="
 exit 0
